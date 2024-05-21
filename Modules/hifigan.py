@@ -433,7 +433,10 @@ class Decoder(nn.Module):
 
         self.F0_conv = weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1))
         
-        self.N_conv = weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1))
+        #self.N_conv = weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1))
+        self.N_conv = torch.compile(weight_norm(
+            nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1)
+        ), mode="reduce-overhead", fullgraph=True, dynamic=False)
         
         self.asr_res = nn.Sequential(
             weight_norm(nn.Conv1d(512, 64, kernel_size=1)),
