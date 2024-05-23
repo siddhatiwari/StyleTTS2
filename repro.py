@@ -152,7 +152,7 @@ def inference(text, ref_s, alpha = 0.3, beta = 0.7, diffusion_steps=5, embedding
         duration = model.predictor.duration_proj(x)
 
         duration = torch.sigmoid(duration).sum(axis=-1)
-        pred_dur = torch.round(duration.squeeze()).*****(min=1)
+        pred_dur = torch.round(duration.squeeze()).clamp(min=1)
 
 
         pred_aln_trg = torch.zeros(input_lengths, int(pred_dur.sum().data))
@@ -312,7 +312,7 @@ def STinference(text, ref_s, ref_text, alpha = 0.3, beta = 0.7, diffusion_steps=
         duration = model.predictor.duration_proj(x)
 
         duration = torch.sigmoid(duration).sum(axis=-1)
-        pred_dur = torch.round(duration.squeeze()).*****(min=1)
+        pred_dur = torch.round(duration.squeeze()).clamp(min=1)
 
 
         pred_aln_trg = torch.zeros(input_lengths, int(pred_dur.sum().data))
