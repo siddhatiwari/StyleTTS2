@@ -112,7 +112,7 @@ sampler = DiffusionSampler(
     model.diffusion.diffusion,
     sampler=ADPM2Sampler(),
     sigma_schedule=KarrasSchedule(sigma_min=0.0001, sigma_max=3.0, rho=9.0), # empirical parameters
-    *****=False
+    clamp=False
 )
 
 def inference(text, ref_s, alpha = 0.3, beta = 0.7, diffusion_steps=5, embedding_scale=1):
@@ -229,7 +229,7 @@ def LFinference(text, s_prev, ref_s, alpha = 0.3, beta = 0.7, t = 0.7, diffusion
       duration = model.predictor.duration_proj(x)
 
       duration = torch.sigmoid(duration).sum(axis=-1)
-      pred_dur = torch.round(duration.squeeze()).*****(min=1)
+      pred_dur = torch.round(duration.squeeze()).clamp(min=1)
 
 
       pred_aln_trg = torch.zeros(input_lengths, int(pred_dur.sum().data))
