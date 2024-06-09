@@ -440,6 +440,7 @@ class Decoder(nn.Module):
             weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1))
         , backend="torch_tensorrt", dynamic=False)
         print("dtrt")
+        self.N_conv_pt = torch.compile(weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1)), mode="reduce-overhead", fullgraph=True, dynamic=False)
         #self.N_conv = torch.compile(weight_norm(
         #    nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1)
         #), mode="reduce-overhead", fullgraph=True, dynamic=False)
@@ -465,22 +466,14 @@ class Decoder(nn.Module):
 
         
         F0 = self.F0_conv(F0_curve.unsqueeze(1))
-        N = self.N_conv(N.unsqueeze(1))
-        
-        # Expected 2D (unbatched) or 3D (batched) input to conv1d, but got input of size: [1, 1, 1, 465]
-        # N_trt = self.N_conv_trt(N.unsqueeze(1))
-        # Check the shape of N and adjust accordingly
-        if len(N.shape) == 1:  # N is just [length]
-            N_corrected = N.unsqueeze(0).unsqueeze(0)  # Make it [1, 1, length]
-        elif len(N.shape) == 2:  # N is [1, length] or [channels, length]
-            N_corrected = N.unsqueeze(0)  # Make it [1, channels, length]
-        else:
-             N_corrected = N  # Assume N is already in the correct shape
-        N_trt = self.N_conv_trt(N_corrected)
+        N_original = N.clone()
+        N = self.N_conv(N_original.clone().unsqueeze(1))
+        N_trt = self.N_conv_trt(N_original.clone().unsqueeze(1))
+        N_pt = self.N_conv_pt(N_original.clone().unsqueeze(1))
 
-        # print first few elemnts of N
-        print(N[:, :, :5])
-        print(N_trt[:, :, :5])
+        print("eager",N[:, :, :5])
+        print("trt",N_trt[:, :, :5])
+        print("compile",N_pt[:, :, :5])
 
         x = torch.cat([asr, F0, N], axis=1)
         x = self.encode(x, s)
@@ -497,3 +490,4 @@ class Decoder(nn.Module):
                 
         x = self.generator(x, s, F0_curve)
         return x
+    
