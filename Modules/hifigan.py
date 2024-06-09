@@ -434,13 +434,18 @@ class Decoder(nn.Module):
 
         self.F0_conv = weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1))
         
+        print("Compiling N_conv")
         self.N_conv = weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1))
-        print("ctrt")
-        self.N_conv_trt = torch.compile(
-            weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1))
-        , backend="torch_tensorrt", dynamic=False)
-        print("dtrt")
+        self.N_conv_trt = torch.compile(weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1)), backend="torch_tensorrt", dynamic=False)
         self.N_conv_pt = torch.compile(weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1)), mode="reduce-overhead", fullgraph=True, dynamic=False)
+        print("Compiled N_conv")
+
+        # print("Compiling N_conv weight_norm outside")
+        # self.N_conv = weight_norm(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1))
+        # self.N_conv_trt = weight_norm(torch.compile(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1), backend="torch_tensorrt", dynamic=False))
+        # self.N_conv_pt = weight_norm(torch.compile(nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1), mode="reduce-overhead", fullgraph=True, dynamic=False))
+        # print("Compiled N_conv weight_norm outside")
+
         #self.N_conv = torch.compile(weight_norm(
         #    nn.Conv1d(1, 1, kernel_size=3, stride=2, groups=1, padding=1)
         #), mode="reduce-overhead", fullgraph=True, dynamic=False)
@@ -467,13 +472,22 @@ class Decoder(nn.Module):
         
         F0 = self.F0_conv(F0_curve.unsqueeze(1))
         N_original = N.clone()
-        N = self.N_conv(N_original.clone().unsqueeze(1))
+
+        N_eager = self.N_conv(N_original.clone().unsqueeze(1))
         N_trt = self.N_conv_trt(N_original.clone().unsqueeze(1))
         N_pt = self.N_conv_pt(N_original.clone().unsqueeze(1))
 
-        print("eager",N[:, :, :5])
-        print("trt",N_trt[:, :, :5])
-        print("compile",N_pt[:, :, :5])
+        print("eager", N_eager[:, :, :5])
+        print("trt", N_trt[:, :, :5])
+        print("pt", N_pt[:, :, :5])
+
+        print('output_inference_mode', output_inference_mode)
+        if output_inference_mode == "eager":
+            N = N_eager
+        elif output_inference_mode == "trt":
+            N = N_trt
+        elif output_inference_mode == "pt":
+            N = N_pt
 
         x = torch.cat([asr, F0, N], axis=1)
         x = self.encode(x, s)
